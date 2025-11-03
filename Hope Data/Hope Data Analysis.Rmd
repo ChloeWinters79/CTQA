@@ -1,0 +1,1173 @@
+---
+title: "HOPE Survey Analysis"
+author: "Chloé Winters"
+date: "2025-10-23"
+output:
+  html_document:           # output document format
+    toc: yes               # add table contents
+    toc_float: yes         # toc_property: floating
+    toc_depth: 4           # depth of TOC headings
+    fig_width: 6           # global figure width
+    fig_height: 4          # global figure height
+    fig_caption: yes       # add figure caption
+    number_sections: yes   # numbering section headings
+    toc_collapsed: yes     # TOC subheading clapsing
+    code_folding: hide     # folding/showing code 
+    code_download: yes     # allow to download complete RMarkdown source code
+    smooth_scroll: yes     # scrolling text of the document
+    theme: lumen           # visual theme for HTML document only
+    highlight: tango       # code syntax hightlighting styles
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: yes
+  word_document:
+    toc: yes
+    toc_depth: '4'
+---
+
+```{css, echo = FALSE}
+div#TOC li {     /* table of content  */
+    list-style:upper-roman;
+    background-image:none;
+    background-repeat:none;
+    background-position:0;
+}
+
+h1.title {    /* level 1 header of title  */
+  font-size: 24px;
+  font-weight: bold;
+  color: DarkRed;
+  text-align: center;
+}
+
+h4.author { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  font-weight: bold;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkRed;
+  text-align: center;
+}
+
+h4.date { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  font-weight: bold;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+  text-align: center;
+}
+
+h1 { /* Header 1 - and the author and data headers use this too  */
+    font-size: 20px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: center;
+}
+
+h2 { /* Header 2 - and the author and data headers use this too  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h3 { /* Header 3 - and the author and data headers use this too  */
+    font-size: 16px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - and the author and data headers use this too  */
+    font-size: 14px;
+  font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: left;
+}
+
+/* Add dots after numbered headers */
+.header-section-number::after {
+  content: ".";
+}
+```
+
+
+
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE,           # include code chunk in the output file
+                      warnings = FALSE,       # sometimes, you code may produce warning messages,
+                                              # you can choose to include the warning messages in
+                                              # the output file. 
+                      results = TRUE          # you can also decide whether to include the output
+                                              # in the output file.
+                      )   
+
+
+
+library(knitr)
+library(pander)
+library(mlbench)
+library(dplyr)
+library(readr)
+library(stringr)
+library(purrr)
+library(ggcorrplot)
+library(GGally)
+library(ggplot2)
+library(tidyr)
+library(gridExtra)
+library(vcd)
+library(lubridate)
+library(tidyverse)
+library(car)
+library(caret)
+library(MASS)
+library(pscl)
+library(ggplot2)
+library(pROC)
+library(knitr)
+library(pander)
+library(mlbench)
+library(MASS)
+library(pROC)
+library(readxl)
+
+knitr::opts_chunk$set(echo = TRUE,      
+                      warnings = FALSE,   
+                      messages = FALSE,  
+                      results = TRUE,
+                      comment = NA
+                      )   
+
+```
+
+```{r}
+
+HOPE <- read_excel("HOPE data 2024 SBNS_dataset_West Chester University_2025-02-20.xlsx")
+ 
+```
+
+```{r}
+
+HOPE <- HOPE %>%
+  mutate(
+    LGBTQIA_SOC = case_when(
+      SOC == 1 & LGBTQIA == 1 ~ "LGBTQIA+ & SOC",
+      SOC == 1 & LGBTQIA == 0 ~ "SOC",
+      SOC == 0 & LGBTQIA == 1 ~ "LGBTQIA+",
+      SOC == 0 & LGBTQIA == 0 ~ "NOT LGBTQIA AND NOT SOC",
+      TRUE ~ " " # Default case for all other conditions
+    )
+  )
+
+# Convert to integer after the mutate step
+HOPE$LGBTQIA <- as.integer(HOPE$LGBTQIA)
+HOPE$SOC <- as.integer(HOPE$SOC)
+
+# Frequency tables
+table(HOPE$SOC)
+table(HOPE$LGBTQIA)
+table(HOPE$LGBTQIA_SOC)
+table(HOPE$Subset)
+table(HOPE$Trans)
+table(HOPE$TransGDiverse)
+
+```
+
+
+```{r}
+HOPE_Cleaned <-  HOPE %>% 
+  filter((LGBTQIA == 0 | LGBTQIA == 1) & (SOC == 0 | SOC == 1)) %>% 
+   dplyr::select(
+    -starts_with("Q"),
+    -starts_with("StartDate")
+  )
+```
+
+
+```{r}
+
+HOPE_Cleaned[] <- lapply(HOPE_Cleaned, function(x) {
+  if (is.character(x)) as.factor(x) else x
+})
+
+sapply(HOPE_Cleaned, is.factor) |> table()
+
+```
+
+# Histograms
+
+## BN and BNI Graphs
+
+```{r}
+
+library(scales)
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "BN")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+
+```
+
+
+## CC Graphs
+
+
+```{r}
+
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "CC")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:2], ncol = 2)
+
+```
+
+## Cred Graphs
+
+```{r}
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "Cred")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+grid.arrange(grobs = plots[9], ncol = 2)  
+
+
+```
+## CS Graph
+
+```{r}
+
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "CS")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+grid.arrange(grobs = plots[9:12], ncol = 2)  
+grid.arrange(grobs = plots[13:16], ncol = 2)
+grid.arrange(grobs = plots[17:20], ncol = 2)
+grid.arrange(grobs = plots[21:24], ncol = 2)
+grid.arrange(grobs = plots[25:28], ncol = 2)
+grid.arrange(grobs = plots[29:30], ncol = 2)
+
+
+```
+
+
+## FD Graph
+
+```{r}
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "Fd")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+grid.arrange(grobs = plots[9:11], ncol = 2)  
+
+
+```
+
+
+## HI Graph
+
+```{r}
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "HI")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+grid.arrange(grobs = plots[9:10], ncol = 2)  
+
+```
+
+
+## Hm Graphs
+
+
+```{r}
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "Hm")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+grid.arrange(grobs = plots[9:11], ncol = 2)  
+
+```
+
+
+
+## MHB Graphs
+
+```{r}
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "MHB")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+grid.arrange(grobs = plots[9:12], ncol = 2)  
+grid.arrange(grobs = plots[13:14], ncol = 2)
+
+```
+
+## PB Graphs
+
+```{r}
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "PB")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+
+```
+
+
+
+## SC Graphs 
+
+```{r}
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "SC")]
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:6], ncol = 2)
+
+```
+
+## Te Graph
+
+```{r}
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "Te")]
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+grid.arrange(grobs = plots[9:10], ncol = 2)  
+
+```
+
+
+## Tr Graph 
+
+```{r}
+
+# Your dataset
+df <- HOPE_Cleaned
+
+# Convert LGBTQIA to factor for discrete coloring
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+# Select only columns that start with "Prefix"
+vars <- names(df)[startsWith(names(df), "Tr")]
+
+plots <- list()
+
+# Loop through each BNI variable
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+grid.arrange(grobs = plots[9:11], ncol = 2)  
+
+
+```
+
+
+## All Other Graphs
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(scales)
+library(gridExtra)
+
+df <- HOPE_Cleaned
+df$LGBTQIA <- as.factor(df$LGBTQIA)
+
+vars <- names(df)[!startsWith(names(df), "BN") & !startsWith(names(df), "CC") & 
+                  !startsWith(names(df), "Cred") & !startsWith(names(df), "CS") & 
+                  !startsWith(names(df), "Fd") & !startsWith(names(df), "HI") & 
+                  !startsWith(names(df), "Hm") & !startsWith(names(df), "MHB") & 
+                  !startsWith(names(df), "PB") & !startsWith(names(df), "SC") & 
+                  !startsWith(names(df), "Te") & !startsWith(names(df), "Tr") & 
+                  !startsWith(names(df), "LGBTQIA")]
+
+plots <- list()  # store all plots
+
+for (v in vars) {
+  df[[v]] <- as.factor(df[[v]])
+  
+  prop_data <- df %>%
+    group_by(LGBTQIA, .data[[v]]) %>%
+    summarise(count = n(), .groups = "drop_last") %>%
+    mutate(prop = count / sum(count))
+  
+  p <- ggplot(prop_data, aes_string(x = v, y = "prop", fill = "LGBTQIA")) +
+    geom_col(position = position_dodge(width = 0.9)) +
+    scale_fill_manual(
+      name = "LGBTQIA",
+      values = c("0" = "gold", "1" = "purple"),
+      labels = c("0" = "Not LGBTQIA", "1" = "LGBTQIA")
+    ) +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    labs(
+      title = paste("Proportion by LGBTQIA for", v),
+      x = v,
+      y = "Proportion"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 11, face = "bold"),
+      legend.position = "top"
+    )
+  
+  plots[[v]] <- p
+}
+
+# Show the first 9 in a 3x3 grid
+grid.arrange(grobs = plots[1:4], ncol = 2)
+grid.arrange(grobs = plots[5:8], ncol = 2)
+grid.arrange(grobs = plots[9:12], ncol = 2)  
+grid.arrange(grobs = plots[13:16], ncol = 2)
+grid.arrange(grobs = plots[17:20], ncol = 2)
+grid.arrange(grobs = plots[21:24], ncol = 2)
+grid.arrange(grobs = plots[25:28], ncol = 2)
+grid.arrange(grobs = plots[29:32], ncol = 2)
+grid.arrange(grobs = plots[33:36], ncol = 2)
+grid.arrange(grobs = plots[37:40], ncol = 2)
+grid.arrange(grobs = plots[41:44], ncol = 2)
+grid.arrange(grobs = plots[45:46], ncol = 2)
+
+```
+
+# Chi Square 
+
+## BNI_fh
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$BNI_fh)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+## BNI_any
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$BNI_any)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+## Cred_Back
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$Cred_Bach)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+## Fd_RunOut
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$FdRunOut)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+## FD_NotLast
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$FdNotLast, HOPE_Cleaned$LGBTQIA)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+chisq.test(contingency_table, simulate.p.value = TRUE)
+
+
+
+
+```
+
+## FD_Balance
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$FdBalance)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+## FdCtMl
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$FdCtMl)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+## FdCtMl3
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$FdCtMl3)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+
+## FdAteLess
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$FdAteLess)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+## FdNtEat
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$FdNtEat)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+## HI
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$HI)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+## HIunsafe
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$HIunsafe)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+
+## MHB_NoNdBa
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$MHB_NoNdBarr)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+
+## MHB_Awareness
+
+```{r}
+# Create the contingency table
+contingency_table <- table(HOPE_Cleaned$LGBTQIA, HOPE_Cleaned$MHB_Awareness)
+print(contingency_table)
+
+# Perform the Chi-square test
+chi_square_test_result <- chisq.test(contingency_table)
+print(chi_square_test_result)
+
+```
+
+```{r}
+# Convert all character variables to factors
+HOPE_Cleaned[] <- lapply(HOPE_Cleaned, function(x) {
+  if (is.character(x) || is.numeric(x)) as.factor(x) else x
+})
+
+
+# Confirm LGBTQIA is a factor with at least 2 levels
+print(table(HOPE_Cleaned$LGBTQIA))
+
+# Identify all factor variables except the target variable
+categorical_vars <- setdiff(names(HOPE_Cleaned)[sapply(HOPE_Cleaned, is.factor)], "LGBTQIA")
+
+# Remove variables with only 1 level (cannot be used in chi-square test)
+categorical_vars <- categorical_vars[sapply(HOPE_Cleaned[, categorical_vars], nlevels) > 1]
+
+# Initialize results table
+chi_results <- data.frame(
+  Variable = character(),
+  Chi_Square = numeric(),
+  DF = numeric(),
+  P_Value = numeric(),
+  stringsAsFactors = FALSE
+)
+
+### 6. Run chi-square tests for each variable
+for (var in categorical_vars) {
+  tbl <- table(HOPE_Cleaned[[var]], HOPE_Cleaned$LGBTQIA)
+  
+  # Only run test if at least 2x2 {
+    test <- chisq.test(tbl)   
+    chi_results <- rbind(chi_results, data.frame(
+      Variable = var,
+      Chi_Square = as.numeric(test$statistic),
+      DF = as.numeric(test$parameter),
+      P_Value = as.numeric(test$p.value)
+    ))
+  }
+
+
+### 8. Extract significant variables (p < .05)
+significant_results <- subset(chi_results, P_Value < 0.05)
+
+### 9. Print outputs
+print("All Chi-Square Results (sorted by p-value):")
+print(chi_results)
+
+print("Significant Associations with LGBTQIA Identity (p < .05):")
+print(significant_results)
+
+```
