@@ -1,0 +1,609 @@
+---
+title: "HOPE Analysis - For Klaus"
+author: "Chloé Winters"
+date: "2026-09-05"
+
+output:
+  word_document:
+    toc: yes
+    toc_depth: '4'
+  html_document:           # output document format
+    toc: yes               # add table contents
+    toc_float: yes         # toc_property: floating
+    toc_depth: 4           # depth of TOC headings
+    fig_width: 6           # global figure width
+    fig_height: 4          # global figure height
+    fig_caption: yes       # add figure caption
+    number_sections: yes   # numbering section headings
+    toc_collapsed: yes     # TOC subheading clapsing
+    code_folding: hide     # folding/showing code 
+    code_download: yes     # allow to download complete RMarkdown source code
+    smooth_scroll: yes     # scrolling text of the document
+    theme: lumen           # visual theme for HTML document only
+    highlight: tango       # code syntax hightlighting styles
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: yes
+---
+
+```{css, echo = FALSE}
+div#TOC li {     /* table of content  */
+    list-style-type: disc;;
+    background-image:none;
+    background-repeat:none;
+    background-position:0;
+}
+
+h1.title {    /* level 1 header of title  */
+  font-size: 24px;
+  font-weight: bold;
+  color: DarkRed;
+  text-align: center;
+}
+
+h4.author { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  font-weight: bold;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkRed;
+  text-align: center;
+}
+
+h4.date { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  font-weight: bold;
+  font-family: "Times New Roman", Times, serif;
+  color: DarkBlue;
+  text-align: center;
+}
+
+h1 { /* Header 1 - and the author and data headers use this too  */
+    font-size: 20px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: center;
+}
+
+h2 { /* Header 2 - and the author and data headers use this too  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h3 { /* Header 3 - and the author and data headers use this too  */
+    font-size: 16px;
+    font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - and the author and data headers use this too  */
+    font-size: 14px;
+  font-weight: bold;
+    font-family: "Times New Roman", Times, serif;
+    color: darkred;
+    text-align: left;
+}
+
+/* Add dots after numbered headers */
+.header-section-number::after {
+  content: ".";
+}
+```
+
+
+
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE,           # include code chunk in the output file
+                      warning = FALSE,       # sometimes, you code may produce warning messages,
+                                              # you can choose to include the warning messages in
+                                              # the output file. 
+                      results = TRUE          # you can also decide whether to include the output
+                                              # in the output file.
+                      )   
+
+
+
+library(knitr)
+library(pander)
+library(mlbench)
+library(dplyr)
+library(readr)
+library(stringr)
+library(purrr)
+library(ggcorrplot)
+library(GGally)
+library(ggplot2)
+library(tidyr)
+library(gridExtra)
+library(vcd)
+library(lubridate)
+library(tidyverse)
+library(car)
+library(caret)
+library(MASS)
+library(pscl)
+library(ggplot2)
+library(pROC)
+library(knitr)
+library(pander)
+library(mlbench)
+library(MASS)
+library(pROC)
+library(readxl)
+library(vcdExtra)
+
+knitr::opts_chunk$set(echo = TRUE,      
+                      warning = FALSE,   
+                      messages = FALSE,  
+                      results = TRUE,
+                      comment = NA
+                      )   
+
+```
+
+
+```{r}
+
+HOPE <- read_excel("HOPE data 2024 SBNS_dataset_West Chester University_2025-02-20.xlsx")
+ 
+```
+
+
+# Question 72
+
+Please indicate whether you have heard of or used any of the following campus-based resources. (Please select one response for each item.) 
+
+o	Q72_X. Category    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used   
+
+## Emergency Grants
+
+```{r}
+# Remove missing/invalid responses
+Q72_1_data <- HOPE[
+  !is.na(HOPE$Q72_1) &
+  !HOPE$Q72_1 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_1_data$Q72_1, Q72_1_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_1_data$Q72_1, Q72_1_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_1_data$Q72_1, Q72_1_data$LGBTQIA)
+)
+
+```
+
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following campus-based resources. (Please select one response for each item.)     
+
+o	Q72_1. Emergency Grants    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is not a statistical significant in proportionally how Cishet
+students answered the question compared to how Queer students answered
+the question.
+
+## Campus Food Pantry
+
+```{r}
+# Remove missing/invalid responses
+Q72_2_data <- HOPE[
+  !is.na(HOPE$Q72_2) &
+  !HOPE$Q72_2 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_2_data$Q72_2, Q72_2_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_2_data$Q72_2, Q72_2_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_2_data$Q72_2, Q72_2_data$LGBTQIA)
+)
+
+```
+
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following
+campus-based resources. (Please select one response for each item.). 
+
+o	Q72_2. Campus Food Pantry    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is a statistical significant in proportionally how Cishet students
+answered the question compared to how Queer students answered the
+question. Looking at the proportion table, a larger proportion of Cishet
+students had not heard of the Campus Food Pantry compared to Queer
+students, with 23.4% of Cishet students being unaware of the food pantry
+compared to 11.4% of Queer students. Additionally, proportionally less
+Cishet students used the food pantry in comparison to queer students
+with 10.2% of Cishet students using the food pantry compared to 19.5% of
+Queer students using the food pantry.
+
+## Food Stamps/SNAP
+
+```{r}
+# Remove missing/invalid responses
+Q72_3_data <- HOPE[
+  !is.na(HOPE$Q72_3) &
+  !HOPE$Q72_3 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_3_data$Q72_3, Q72_3_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_3_data$Q72_3, Q72_3_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_3_data$Q72_3, Q72_3_data$LGBTQIA)
+)
+
+```
+
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following
+campus-based resources. (Please select one response for each item.)  
+
+o	Q72_3. Help Obtaining Food Stamps/SNAP    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is a statistical significant in proportionally how Cishet students
+answered the question compared to how Queer students answered the
+question. Looking at the proportion table, a larger proportion of Cishet
+students had not heard of help obtaining food stamps/SNAP compared to
+Queer students, with 37.7% of Cishet students being unaware of the food
+pantry compared to 27.6% of Queer students. Additionally, proportionally
+less Cishet students had heard of but not used help obtaining food
+stamps/SNAP in comparison to queer students with 57.1% of Cishet
+students having heard of but not used help obtaining food stamps/SNAP to
+67.2% of Queer students.
+
+## Unemployment Benefits, WIC, TANF, etc.
+
+```{r}
+# Remove missing/invalid responses
+Q72_4_data <- HOPE[
+  !is.na(HOPE$Q72_4) &
+  !HOPE$Q72_4 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_4_data$Q72_4, Q72_4_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_4_data$Q72_4, Q72_4_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_4_data$Q72_4, Q72_4_data$LGBTQIA)
+)
+
+```
+
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following
+campus-based resources. (Please select one response for each item.). 
+
+o	Q72_4. Help Applying For Other Public Supports, Such As Unemplyment Benefits, WIC, TANF, etc.     
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is not a statistical significant in proportionally how Cishet
+students answered the question compared to how Queer students answered
+the question.
+
+## Food Scholarships, Meal Vouchers, or Another Source of Free Food
+
+```{r}
+# Remove missing/invalid responses
+Q72_5_data <- HOPE[
+  !is.na(HOPE$Q72_5) &
+  !HOPE$Q72_5 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_5_data$Q72_5, Q72_5_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_5_data$Q72_5, Q72_5_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_5_data$Q72_5, Q72_5_data$LGBTQIA)
+)
+
+```
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following
+campus-based resources. (Please select one response for each item.)   
+
+o	Q72_5. Food Scholarships, Meal Vouchers, or Another Source of Free Food    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is not a statistical significant in proportionally how Cishet
+students answered the question compared to how Queer students answered
+the question.
+
+## Emergency Housing
+
+```{r}
+# Remove missing/invalid responses
+Q72_6_data <- HOPE[
+  !is.na(HOPE$Q72_6) &
+  !HOPE$Q72_6 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_6_data$Q72_6, Q72_6_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_6_data$Q72_6, Q72_6_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_6_data$Q72_6, Q72_6_data$LGBTQIA)
+)
+
+```
+
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following
+campus-based resources. (Please select one response for each item.)   
+
+o	Q72_6. Emergency Housing    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is a statistical significant in proportionally how Cishet students
+answered the question compared to how Queer students answered the
+question. Looking at the proportion table, a larger proportion of Cishet
+students had not heard of emergency housing compared to Queer students, with 60.4% of Cishet students being unaware of emergency housing compared to 50.6% of Queer students. Additionally, proportionally less Cishet students had heard of but not used emergency housing in comparison to queer students with 39.3% of Cishet students having heard of but not used emergency housing compared to 48.2% of Queer students. Finally, less Cishet students had used emergency housing compared to Queer students, with 0.3% of Cishet students using emergency housing compared to 1.2% of queer students using emergency housing. 
+
+## Help Finding Affordable Housing
+
+```{r}
+# Remove missing/invalid responses
+Q72_7_data <- HOPE[
+  !is.na(HOPE$Q72_7) &
+  !HOPE$Q72_7 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_7_data$Q72_7, Q72_7_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_7_data$Q72_7, Q72_7_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_7_data$Q72_7, Q72_7_data$LGBTQIA)
+)
+
+```
+
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following
+campus-based resources. (Please select one response for each item.).
+
+o	Q72_7. Help Finding Affordable Housing    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is not a statistical significant in proportionally how Cishet
+students answered the question compared to how Queer students answered
+the question.
+
+## Transportation Resources, Such As A Bus Pass
+
+```{r}
+# Remove missing/invalid responses
+Q72_8_data <- HOPE[
+  !is.na(HOPE$Q72_8) &
+  !HOPE$Q72_8 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_8_data$Q72_8, Q72_8_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_8_data$Q72_8, Q72_8_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_8_data$Q72_8, Q72_8_data$LGBTQIA)
+)
+
+```
+
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following
+campus-based resources. (Please select one response for each item.). 
+
+o	Q72_8. Transportation Resources, Such as a Bus Pass    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is not a statistical significant in proportionally how Cishet
+students answered the question compared to how Queer students answered
+the question.
+
+## A Campus Health Clinic and/or Counseling
+
+```{r}
+# Remove missing/invalid responses
+Q72_9_data <- HOPE[
+  !is.na(HOPE$Q72_9) &
+  !HOPE$Q72_9 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_9_data$Q72_9, Q72_9_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_9_data$Q72_9, Q72_9_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_9_data$Q72_9, Q72_9_data$LGBTQIA)
+)
+
+```
+
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following
+campus-based resources. (Please select one response for each item.). 
+
+o	Q72_9. A Campus Health Clinic and/or Counseling    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is a statistical significant in proportionally how Cishet studentsanswered the question compared to how Queer students answered the question. Looking at the proportion table, a larger proportion of Cishet students had not heard of a campus health clinic and/or counseling to Queer students, with 16.1% of Cishet students being unaware of a campus health clinic and/or counselingg compared to 8.2% of Queer students. Additonally, less Cishet students had used a campus health clinic and/or counseling compared to Queer students, with 16.8% of Cishet students using a campus health clinic and/or counseling compared to 26.2% of queer students using a campus health clinic and/or counseling. 
+
+## Loaned or Free Wi-Fi Hotspot or Laptop
+
+```{r}
+# Remove missing/invalid responses
+Q72_10_data <- HOPE[
+  !is.na(HOPE$Q72_10) &
+  !HOPE$Q72_10 %in% c(-99, 99) &
+  !is.na(HOPE$LGBTQIA),
+]
+
+# Counts
+table(Q72_10_data$Q72_10, Q72_10_data$LGBTQIA)
+
+# Proportions within LGBTQIA groups
+round(
+  prop.table(
+    table(Q72_10_data$Q72_10, Q72_10_data$LGBTQIA),
+    margin = 2
+  ),
+  3
+)
+
+# Chi-square test
+chisq.test(
+  table(Q72_10_data$Q72_10, Q72_10_data$LGBTQIA)
+)
+
+```
+In terms of the following question asked below
+
+Please indicate whether you have heard of or used any of the following
+campus-based resources. (Please select one response for each item.). 
+
+o	Q72_10. Loaned or Free Wi-Fi Hotspot or Laptop    
+o	1 = Have not heard of   
+o	2 = Heard of it but have not used   
+o	3 = Used  
+
+There is not a statistical significant in proportionally how Cishet
+students answered the question compared to how Queer students answered
+the question.
